@@ -3,3 +3,4 @@ flask-cors
 requests
 duckduckgo_search
 gunicorn
+os
