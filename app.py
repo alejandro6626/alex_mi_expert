@@ -3,6 +3,16 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from duckduckgo_search import DDGS # Standard import for the library
 import os
+import sys
+
+# FIX FOR LEAPCELL: /dev/shm is not available
+# This forces libraries to use /tmp instead of shared memory
+if not os.path.exists('/dev/shm'):
+    try:
+        os.symlink('/tmp', '/dev/shm')
+    except (OSError, PermissionError):
+        # If we can't symlink, we manually point common temp variables
+        os.environ['TMPDIR'] = '/tmp'
 
 # Absolute pathing ensures the 'static' folder is found regardless of how the app is started
 base_dir = os.path.dirname(os.path.abspath(__file__))
