@@ -1,7 +1,7 @@
 import requests
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from ddgs import DDGS # Standard import for the library
+from duckduckgo_search import DDGS # Standard import for the library
 import os
 
 # Absolute pathing ensures the 'static' folder is found regardless of how the app is started
