@@ -5,14 +5,11 @@ from duckduckgo_search import DDGS # Standard import for the library
 import os
 import sys
 
-# FIX FOR LEAPCELL: /dev/shm is not available
-# This forces libraries to use /tmp instead of shared memory
-if not os.path.exists('/dev/shm'):
-    try:
-        os.symlink('/tmp', '/dev/shm')
-    except (OSError, PermissionError):
-        # If we can't symlink, we manually point common temp variables
-        os.environ['TMPDIR'] = '/tmp'
+# FIX FOR LEAPCELL: Handle read-only filesystem and missing /dev/shm
+# We set environment variables that tell libraries to use /tmp (writable) 
+# instead of /dev/shm or the root directory.
+os.environ['TMPDIR'] = '/tmp'
+os.environ['PYTHON_EGG_CACHE'] = '/tmp'
 
 # Absolute pathing ensures the 'static' folder is found regardless of how the app is started
 base_dir = os.path.dirname(os.path.abspath(__file__))
