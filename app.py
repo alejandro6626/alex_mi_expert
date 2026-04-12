@@ -57,7 +57,7 @@ def get_optimized_search_query(user_prompt):
                 ],
             }
         ],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 50},
+        "generationConfig": {"temperature": 0.0, "maxOutputTokens": 50},
     }
 
     try:
@@ -185,6 +185,9 @@ def get_web_context(optimized_query, max_results=4):
             # 1. Trim to the 4 results the LLM will actually see
             final_selection = filtered_results[:max_results]
 
+            # NEW: Sort the selection by URL to ensure context order is identical every time
+            final_selection.sort(key=lambda x: x["href"])  # <--- ADD THIS LINE
+
             # 2. Reset and Recalculate based ONLY on these 4 links
             used_general_search = False
             general_count = 0
@@ -292,10 +295,12 @@ def chat():
             "4. **CITATIONS**: Cite all sources in-text using [1], [2], etc..\n"
             "5. **CLINICAL STANDARDS**: Categorize all reaction severities using CTCAE grading.\n\n"
             "**SECTION II: WRITING PROTOCOL (REPEATABILITY)**\n"
-            "To ensure clinical consistency, **1. Executive Summary** MUST follow this 3-sentence opening sequence:\n"
-            f"- Sentence 1: {fallback_notice if used_fallback else 'Define the therapeutic class of the agents involved.'}\n"
-            "- Sentence 2: Identify the most clinically significant potential interaction or ADR found in the data.\n"
-            "- Sentence 3: Explicitly state if the combination is generally well-tolerated or requires specific monitoring.\n\n"
+            "To ensure clinical consistency, **1. Executive Summary** MUST follow this exact sequence:\n"
+            f"- Sentence 1: {fallback_notice if used_fallback else 'Define the therapeutic class of the agents.'}\n"
+            "- Sentence 2: EXHAUSTIVE LISTING: You MUST identify every unique adverse effect or mechanism "
+            "mentioned across the [SEARCH_DATA]. Do not select one; list all findings (e.g., 'Data indicates X [1], "
+            "while potential Y is also noted [3]').\n"
+            "- Sentence 3: State the overall tolerability based on the collective evidence."
             "**SECTION III: DATA & REFERENCES**\n"
             f"[SEARCH_DATA]\n{web_context if web_context else 'No external data found.'}\n\n"
             f"[REFERENCE_LIST]\n{reference_html if reference_html else 'None available.'}\n\n"
