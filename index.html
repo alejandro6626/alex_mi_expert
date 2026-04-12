@@ -59,17 +59,31 @@
 </div>
 
 <script>
-// Relative path for Leapcell deployment
-const BACKEND_URL = '/chat';
+// 1. CONFIGURATION
+const BACKEND_URL = 'https://alexmi-chatbot-alejandrojc3902-7zeh8aci.leapcell.dev/chat';
+//const BACKEND_URL = '/chat';
 let busy = false;
 
 const inp = document.getElementById('inp');
 const msgs = document.getElementById('msgs');
 const sbtn = document.getElementById('sbtn');
+
 const history = [];
 
 function resetHeight() { inp.style.height = 'auto'; inp.style.height = inp.scrollHeight + 'px'; }
 inp.addEventListener('input', resetHeight);
+
+// Add this configuration BEFORE your addMsg function
+marked.setOptions({
+    breaks: true,
+    gfm: true
+});
+
+// Custom renderer to force links to open in a new tab
+const renderer = new marked.Renderer();
+renderer.link = function(href, title, text) {
+    return `<a href="${href}" title="${title || ''}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+};
 
 function addMsg(role, text, isError = false) {
     document.getElementById('welcome')?.remove();
@@ -78,13 +92,25 @@ function addMsg(role, text, isError = false) {
     const style = isError ? 'style="border-left: 5px solid #d32f2f; background: #fff5f5;"' : '';
     
     let formatted = text;
+
     if (role === 'agent') {
+        // 1. Fix "Wildcards": Convert markdown list asterisks (*) into clean bullet points
         formatted = formatted.replace(/^\s*\*\s+/gm, '• ');
+        
+        // 2. Fix "Bold Wildcards": If it looks like "* Myalgia:", make it "<strong>Myalgia:</strong>"
         formatted = formatted.replace(/\*\s+\*\*(.*?)\*\*:/g, '<strong>$1:</strong>');
+
+        // 3. Fix "Bold Text": Standard **bold** to <strong>
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        // 4. Fix "Chunky Text": Ensure double newlines create a real paragraph break
+        // We replace double newlines with a spacing div for better clinical readability
         formatted = formatted.replace(/\n\n/g, '<div style="margin-bottom: 12px;"></div>');
+        
+        // 5. Fix "Carrier Returns": Convert single newlines to <br>
         formatted = formatted.replace(/\n/g, '<br>');
     } else {
+        // User messages stay simple
         formatted = text.replace(/\n/g, '<br>');
     }
     
@@ -113,29 +139,38 @@ async function send() {
     try {
         const res = await fetch(BACKEND_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true' 
+            },
             body: JSON.stringify({ contents: history })
         });
 
+        // 1. Check if the server actually responded
         if (!res.ok) {
             const errorData = await res.json();
-            throw new Error(errorData.error?.message || errorData.error || `HTTP Error ${res.status}`);
+            throw new Error(errorData.error || `HTTP Error ${res.status}`);
         }
 
         const data = await res.json();
         document.getElementById('typing')?.remove();
 
+        // 2. Safely check for the reply
         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
             const reply = data.candidates[0].content.parts[0].text;
             addMsg('agent', reply);
             history.push({ role: 'model', parts: [{ text: reply }] });
+        } else if (data.promptFeedback) {
+            addMsg('agent', "<strong>Safety Block:</strong> Query flagged by content filters.", true);
         } else {
+            // This will show you exactly what the bad data looks like
+            console.error("Malformed Data:", data);
             throw new Error("Invalid response format from AI.");
         }
 
     } catch (e) {
         document.getElementById('typing')?.remove();
-        addMsg('agent', `<strong>System Error:</strong> ${e.message}`, true);
+        addMsg('agent', `<strong>Debug Info:</strong> ${e.message}`, true);
     } finally {
         busy = false;
         sbtn.style.opacity = "1";
