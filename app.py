@@ -383,7 +383,7 @@ def chat():
             f"[SEARCH_DATA]\n{web_context if web_context else 'No external data found.'}\n\n"
             f"[REFERENCE_LIST]\n{reference_html if reference_html else 'None available.'}\n\n"
             "End every response with: 'Clinical decisions must be tailored to the individual patient profile. Verify with current SmPC/PI.'\n"
-            "If the question is not directed towards your field of pharmacovigilance expertise, state that you cannot respond."
+            "IMPORTANT: If the question is not directed towards your field of pharmacovigilance expertise, state that you cannot respond in a simple message explaining why, don't assemble the reponse structure indicated in 4."
         )
 
         full_contents = [
