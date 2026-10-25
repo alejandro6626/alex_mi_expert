@@ -17,6 +17,7 @@ if not API_KEY:
 # MODEL_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key={API_KEY}"
 # Switched from discontinued gemma to gemini-3.8-flash (free tier supported)
 MODEL_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={API_KEY}"
+MODEL_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
 # MODEL_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={API_KEY}"
 # Customizable Settings
 MAX_SEARCH_RESULTS = 4
@@ -363,6 +364,38 @@ def chat():
 
         print("--- Stage 2: Generating final response ---")
         response = requests.post(MODEL_URL, json=payload, timeout=45)
+
+        try:
+            data = response.json()
+        except Exception as json_err:
+            print(f"JSON Decode Error. Raw text response was: {response.text}")
+            return jsonify({"error": {"message": f"Invalid JSON from AI API: {response.text}"}}), 500
+
+        # Check if Google returned an error block instead of candidates
+        if "error" in data:
+            err_msg = data["error"].get("message", "Unknown API error")
+            print(f"Google API Error: {err_msg}")
+            return jsonify({"error": {"message": f"Gemini API Error: {err_msg}"}}), 500
+
+        # --- TOKEN COUNT PRINTING ---
+        if "usageMetadata" in data:
+            usage = data["usageMetadata"]
+            prompt_tokens = usage.get("promptTokenCount", 0)
+            total_tokens = usage.get("totalTokenCount", 0)
+            print(f"DEBUG: Full Context Size (Input): {prompt_tokens} tokens")
+            print(f"DEBUG: Total Transaction Size: {total_tokens} tokens")
+
+        if "candidates" in data and len(data["candidates"]) > 0:
+            data["web_sources"] = source_links
+            data["optimized_search_query"] = optimized_query
+            return jsonify(data)
+        else:
+            print(f"DEBUG: Unexpected response structure: {data}")
+            return jsonify({"error": {"message": "Invalid response format from AI: Missing candidates block."}}), 500
+
+'''
+        print("--- Stage 2: Generating final response ---")
+        response = requests.post(MODEL_URL, json=payload, timeout=45)
         data = response.json()
 
         # --- ADDED: TOKEN COUNT PRINTING ---
@@ -373,6 +406,7 @@ def chat():
             print(f"DEBUG: Full Context Size (Input): {prompt_tokens} tokens")
             print(f"DEBUG: Total Transaction Size: {total_tokens} tokens")
         # ------------------------------------
+'''
 
         if "candidates" in data:
             data["web_sources"] = source_links
