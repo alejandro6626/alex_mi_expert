@@ -52,8 +52,12 @@ def get_optimized_search_query(user_prompt):
                             "You are a medical search optimizer. Convert the following user prompt into a "
                             "concise, professional search query for medical databases. "
                             "Focus on drug names, interactions, or clinical conditions. "
-                            "When any specific numeric patient age is mentioned (e.g., “15-year-old”, “68 y/o”, “35 years”), immediately replace it with the appropriate standard age category used in ICH pharmacovigilance guidelines (E2A, E2B(R3), E2F), ICH E7 (geriatrics), ICH E11 (pediatrics), and FDA/EMA clinical trial subpopulation reporting. Use only these conventional medical descriptors: infant, child, teenager/adolescent, young adult, middle-aged adult, older adult, elderly adult, or geriatric/very elderly patient."
-                            "Mention patient's sex if given"
+                            "When any specific numeric patient age is mentioned (e.g., “15-year-old”, “68 y/o”, “35 years”), "
+                            "immediately replace it with the appropriate standard age category used in ICH pharmacovigilance guidelines "
+                            "(E2A, E2B(R3), E2F), ICH E7 (geriatrics), ICH E11 (pediatrics), and FDA/EMA clinical trial subpopulation reporting. "
+                            "Use only these conventional medical descriptors: infant, child, teenager/adolescent, young adult, middle-aged adult, "
+                            "older adult, elderly adult, or geriatric/very elderly patient. "
+                            "Mention patient's sex if given. "
                             "Output ONLY the search query text, nothing else.\n\n"
                             f"User Prompt: {user_prompt}"
                         )
@@ -207,14 +211,14 @@ def get_web_context(optimized_query, max_results=4):
 
             # 3. Build context strings
             for i, r in enumerate(final_selection, 1):
-                context_text += (
-                    f"\n[SOURCE {i}]\nTitle: {r['title']}\nSnippet: {r['body']}\n"
-                )
+                title = r.get("title") or r.get("href")
+                body = r.get("body", "")
+                context_text += f"\n[SOURCE {i}]\nTitle: {title}\nSnippet: {body}\n"
                 formatted_refs += (
                     f"{i}. <a href='{r['href']}' target='_blank' rel='noopener noreferrer' "
-                    f"style='color: #1976d2; text-decoration: underline;'>{r['title']}</a><br>\n"
+                    f"style='color: #1976d2; text-decoration: underline;'>{title}</a><br>\n"
                 )
-                links.append({"title": r["title"], "url": r["href"]})
+                links.append({"title": title, "url": r["href"]})
 
             # --- THE LOGS ---
         print(f"DEBUG: General Search Results added to context: {general_count}")
@@ -343,10 +347,9 @@ def chat():
             f"[SEARCH_DATA]\n{web_context if web_context else 'No data.'}\n\n"
             f"[REFERENCE_LIST]\n{reference_html if reference_html else 'None.'}\n\n"
             "**4. References** must be a verbatim copy of the [REFERENCE_LIST] above.\n\n"
-            "**SECTION IV: SCOPE & SAFETY**\n"
-            "- Non-PV or 'Prank' queries: Refuse in a simple sentence. Do not use the report structure.\n"
-            "- End every response with: 'Clinical decisions must be tailored to the individual "
-            "patient profile. Verify with current SmPC/PI.'"
+            "**SECTION IV: MANDATORY CLOSING DISCLAIMER**\n"
+            "Every single response MUST conclude with this exact sentence on a new line at the very end:\n"
+            "'Clinical decisions must be tailored to the individual patient profile. Verify with current SmPC/PI.'"
         )
 
         full_contents = [
